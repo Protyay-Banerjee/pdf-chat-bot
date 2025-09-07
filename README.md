@@ -41,25 +41,25 @@ cd pdf-chat-bot
 
 ## Create & activate a virtual environment
 ```python -m venv venv```
-# macOS / Linux
+### macOS / Linux
 ```source venv/bin/activate```
-# Windows (PowerShell)
+### Windows (PowerShell)
 ```venv\Scripts\Activate.ps1```
-# Windows (cmd)
+### Windows (cmd)
 ```venv\Scripts\activate```
-# Install dependencies
+### Install dependencies
 ```
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-# Option A: run via python (main includes uvicorn run block)
+### Option A: run via python (main includes uvicorn run block)
 ```python main.py```
 
-# Option B: run via uvicorn
+### Option B: run via uvicorn
 ```uvicorn main:app --host 127.0.0.1 --port 8000```
 
-# Open your browser at: 
+### Open your browser at: 
 http://127.0.0.1:8000
 
 ## 🧩 How it works (overview)
@@ -91,4 +91,5 @@ This project is provided under the MIT License — see LICENSE for details.
 Built with FastAPI, Hugging Face Transformers, LangChain, and Chroma.
 
 Inspired by open-source PDF→QA examples and local LLM workflows.
+
 
