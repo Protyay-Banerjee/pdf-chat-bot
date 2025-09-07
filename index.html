@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>PDF Chat (FastAPI) — CPU Mode</title>
+  <style>
+    body { font-family: Inter, "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial; background:#f4f6f8; margin:0; }
+    header{ background:#2e86de; color:#fff; padding:18px; text-align:center;}
+    main{ max-width:900px; margin:28px auto; background:#fff; padding:22px; border-radius:10px; box-shadow:0 6px 18px rgba(0,0,0,0.06); }
+    #chatBox{ height:360px; overflow:auto; border:1px solid #e6e9ed; padding:14px; border-radius:8px; background:#fafafa; }
+    #chatBox .row{ margin:10px 0; }
+    .user{ color:#1c5cbf; font-weight:600; }
+    .bot{ color:#111; }
+    .controls{ display:flex; gap:8px; margin-top:12px; align-items:center; }
+    input[type="file"]{ }
+    button{ background:#2e86de; border:none; color:#fff; padding:10px 14px; border-radius:8px; cursor:pointer; font-weight:600;}
+    button:disabled{ opacity:0.6; cursor:not-allowed;}
+    #status { margin-left:12px; color:#666; font-size:14px; }
+    footer{ text-align:center; color:#999; padding:14px; margin-top:12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Chat with your PDF (FastAPI, CPU)</h1>
+    <div style="font-size:13px; opacity:0.9">Per-user index · smaller T5 model for CPU · frontend session stored in localStorage</div>
+  </header>
+
+  <main>
+    <div style="display:flex; gap:12px; align-items:center;">
+      <input type="file" id="pdfFile" accept="application/pdf" />
+      <button id="uploadBtn" disabled>Upload & Index</button>
+      <span id="status">Session: <b id="sidDisplay">—</b></span>
+      <button id="newSessionBtn" style="margin-left:auto">New Session</button>
+    </div>
+
+    <hr style="margin:16px 0" />
+
+    <div id="chatBox"></div>
+
+    <div class="controls">
+      <input type="text" id="userInput" placeholder="Ask a question..." style="flex:1; padding:10px; border-radius:8px; border:1px solid #e6e9ed;">
+      <button id="sendBtn" disabled>Send</button>
+      <button id="clearBtn">Clear Session</button>
+    </div>
+
+    <p style="font-size:13px; color:#666; margin-top:8px">Tip: Use the same browser to keep the session. You can create a new session with "New Session".</p>
+  </main>
+
+  <footer>
+    PDF Chatbot • CPU mode • FastAPI backend
+  </footer>
+
+<script>
+  // Simple UUIDv4 fallback
+  function uuidv4() {
+    return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c/4).toString(16)
+    );
+  }
+
+  let sid = null;
+
+  const uploadBtn = document.getElementById("uploadBtn");
+  const sendBtn = document.getElementById("sendBtn");
+  const chatBox = document.getElementById("chatBox");
+  const statusSpan = document.getElementById("status");
+
+  // init: disable until session ready
+  uploadBtn.disabled = true;
+  sendBtn.disabled = true;
+
+  async function initSession() {
+    // try to reuse saved session if server knows it; otherwise create new server session
+    let saved = localStorage.getItem("pdfqa_session_id");
+    if (saved) {
+      try {
+        const res = await fetch(`/status?session_id=${saved}`);
+        if (!res.ok) saved = null;
+      } catch (e) {
+        saved = null;
+      }
+    }
+
+    if (!saved) {
+      try {
+        const r = await fetch("/create_session", { method: "POST" });
+        const j = await r.json();
+        saved = j.session_id;
+      } catch (e) {
+        // fallback to client uuid (rare)
+        saved = uuidv4();
+      }
+      localStorage.setItem("pdfqa_session_id", saved);
+    }
+
+    sid = saved;
+    document.getElementById("sidDisplay").innerText = sid;
+    uploadBtn.disabled = false;
+    // start polling (background)
+    pollStatus(sid);
+  }
+
+  async function pollStatus(sessionId, interval = 2000) {
+    while (true) {
+      try {
+        const res = await fetch(`/status?session_id=${sessionId}`);
+        if (!res.ok) throw new Error("Status request failed");
+        const j = await res.json();
+        if (j.status === "ready") {
+          statusSpan.innerText = `Session: ${sessionId} (ready)`;
+          sendBtn.disabled = false;
+          return "ready";
+        } else if (j.status === "processing") {
+          statusSpan.innerText = `Session: ${sessionId} (processing...)`;
+          sendBtn.disabled = true;
+        } else if (j.status === "error") {
+          statusSpan.innerText = `Session: ${sessionId} (error: ${j.error})`;
+          sendBtn.disabled = true;
+          return "error";
+        } else {
+          statusSpan.innerText = `Session: ${sessionId} (${j.status})`;
+          sendBtn.disabled = true;
+        }
+      } catch (err) {
+        statusSpan.innerText = `Session: ${sessionId} (status check failed)`;
+        sendBtn.disabled = true;
+      }
+      await new Promise(r => setTimeout(r, interval));
+    }
+  }
+
+  uploadBtn.addEventListener("click", async () => {
+    const fileInput = document.getElementById("pdfFile");
+    if (!fileInput.files.length) {
+      alert("Please pick a PDF file first.");
+      return;
+    }
+    uploadBtn.disabled = true;
+    uploadBtn.innerText = "Uploading...";
+
+    const fd = new FormData();
+    fd.append("session_id", sid);
+    fd.append("file", fileInput.files[0]);
+
+    try {
+      const res = await fetch("/upload", { method: "POST", body: fd });
+      if (!res.ok) {
+        const err = await res.json();
+        alert("Upload failed: " + (err.detail || err.message || JSON.stringify(err)));
+        uploadBtn.disabled = false;
+        uploadBtn.innerText = "Upload & Index";
+        return;
+      }
+      chatBox.innerHTML += `<div class="row"><span style="color:green">✅ Upload accepted. Processing started for session ${sid}.</span></div>`;
+      // poll status until ready
+      await pollStatus(sid);
+      chatBox.innerHTML += `<div class="row"><span style="color:green">✅ Index ready. Ask a question!</span></div>`;
+    } catch (err) {
+      alert("Upload error: " + err);
+    } finally {
+      uploadBtn.disabled = false;
+      uploadBtn.innerText = "Upload & Index";
+    }
+  });
+
+  document.getElementById("newSessionBtn").addEventListener("click", () => {
+    localStorage.removeItem("pdfqa_session_id");
+    location.reload();
+  });
+
+  document.getElementById("clearBtn").addEventListener("click", async () => {
+    if (!confirm("Clear this session and all index data?")) return;
+    const fd = new FormData();
+    fd.append("session_id", sid);
+    const res = await fetch("/clear_session", {
+      method: "POST",
+      body: fd
+    });
+    if (res.ok) {
+      chatBox.innerHTML = "";
+      alert("Session cleared.");
+      localStorage.removeItem("pdfqa_session_id");
+      location.reload();
+    } else {
+      alert("Failed to clear session.");
+    }
+  });
+
+  // send message
+  sendBtn.addEventListener("click", async () => {
+    const input = document.getElementById("userInput");
+    const msg = input.value.trim();
+    if (!msg) return;
+    chatBox.innerHTML += `<div class="row"><span class="user">You:</span> ${msg}</div>`;
+    input.value = "";
+    sendBtn.disabled = true;
+
+    const fd = new FormData();
+    fd.append("session_id", sid);
+    fd.append("message", msg);
+
+    try {
+      const res = await fetch("/chat", { method: "POST", body: fd });
+      if (!res.ok) {
+        const err = await res.json();
+        chatBox.innerHTML += `<div class="row"><span style="color:red">Error: ${err.detail || JSON.stringify(err)}</span></div>`;
+      } else {
+        const j = await res.json();
+        chatBox.innerHTML += `<div class="row"><span class="bot">Bot:</span> ${j.response}</div>`;
+      }
+    } catch (err) {
+      chatBox.innerHTML += `<div class="row"><span style="color:red">Network error: ${err}</span></div>`;
+    } finally {
+      sendBtn.disabled = false;
+      chatBox.scrollTop = chatBox.scrollHeight;
+    }
+  });
+
+  // initialize on load
+  (async () => {
+    await initSession();
+  })();
+</script>
+</body>
+</html>
