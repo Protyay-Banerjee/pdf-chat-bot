@@ -17,6 +17,7 @@ Built with **FastAPI** (backend), a small local **Flan-T5** model for generation
 
 ## 🗂 Project structure
 
+```
 pdfchatbot/
 ├── main.py # FastAPI backend
 ├── templates/
@@ -25,7 +26,7 @@ pdfchatbot/
 ├── requirements.txt # Dependencies
 ├── README.md # This file
 └── .gitignore
-
+```
 ## 🚀 Quick start (local, CPU)
 
 > Tested on Python 3.10+ (Python 3.12 is supported too). Work in a virtual environment.
@@ -37,27 +38,32 @@ git clone git@github.com:Protyay-Banerjee/pdf-chat-bot.git
 cd pdf-chat-bot
 ```
 
-## Create & activate a virtual environment
+```## Create & activate a virtual environment
 python -m venv venv
+```
 
+```source venv/bin/activate
 # macOS / Linux
-source venv/bin/activate
+```
 
-# Windows (PowerShell)
+```# Windows (PowerShell)
 venv\Scripts\Activate.ps1
-
-# Windows (cmd)
+```
+```# Windows (cmd)
 venv\Scripts\activate
+```
 
-# Install dependencies
+```# Install dependencies
 pip install --upgrade pip
 pip install -r requirements.txt
+```
 
 # Option A: run via python (main includes uvicorn run block)
 python main.py
 
-# Option B: run via uvicorn
+```# Option B: run via uvicorn
 uvicorn main:app --host 127.0.0.1 --port 8000
+```
 
 # Open your browser at: 
 http://127.0.0.1:8000
@@ -89,4 +95,5 @@ This project is provided under the MIT License — see LICENSE for details.
 
 ## ❤️ Acknowledgements
 Built with FastAPI, Hugging Face Transformers, LangChain, and Chroma.
+
 Inspired by open-source PDF→QA examples and local LLM workflows.
