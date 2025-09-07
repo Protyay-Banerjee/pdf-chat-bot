@@ -33,37 +33,31 @@ pdfchatbot/
 
 1. Clone (if you haven't already)
 
-```bash
+bash
+```
 git clone git@github.com:Protyay-Banerjee/pdf-chat-bot.git
 cd pdf-chat-bot
 ```
 
-```## Create & activate a virtual environment
-python -m venv venv
-```
-
-```source venv/bin/activate
+## Create & activate a virtual environment
+```python -m venv venv```
 # macOS / Linux
+```source venv/bin/activate```
+# Windows (PowerShell)
+```venv\Scripts\Activate.ps1```
+# Windows (cmd)
+```venv\Scripts\activate```
+# Install dependencies
 ```
-
-```# Windows (PowerShell)
-venv\Scripts\Activate.ps1
-```
-```# Windows (cmd)
-venv\Scripts\activate
-```
-
-```# Install dependencies
 pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
 # Option A: run via python (main includes uvicorn run block)
-python main.py
+```python main.py```
 
-```# Option B: run via uvicorn
-uvicorn main:app --host 127.0.0.1 --port 8000
-```
+# Option B: run via uvicorn
+```uvicorn main:app --host 127.0.0.1 --port 8000```
 
 # Open your browser at: 
 http://127.0.0.1:8000
@@ -97,3 +91,4 @@ This project is provided under the MIT License — see LICENSE for details.
 Built with FastAPI, Hugging Face Transformers, LangChain, and Chroma.
 
 Inspired by open-source PDF→QA examples and local LLM workflows.
+
